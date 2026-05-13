@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "retrace-defect-ledger"
+version = "0.1.0"
+description = "A deterministic compression-complexity flight recorder for data transformations."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    { name = "Guntars Nosals" }
+]
+keywords = [
+    "data-pipeline",
+    "debugging",
+    "compression",
+    "observability",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Software Development :: Debuggers",
+]
+
+[tool.setuptools.packages.find]
+include = ["retrace*"]
