@@ -2,6 +2,7 @@ from retrace import (
     compressed_complexity,
     compare_zlib_complexity,
     render_ledger_table,
+    save_ledger_report,
     trace_pipeline,
 )
 from retrace.adapters.json_adapter import canonical_json_bytes, load_json, save_json
@@ -122,3 +123,19 @@ def test_canonical_json_bytes_are_stable():
 
     assert canonical_json_bytes(left) == canonical_json_bytes(right)
     assert canonical_json_bytes(left) == b'{"a":1,"b":2}'
+
+
+def test_save_ledger_report_preserves_raw_rows(tmp_path):
+    report_path = tmp_path / "reports" / "ledger.json"
+    ledger = trace_pipeline(
+        {"keep": "a" * 100, "drop": "b" * 1000},
+        [("drop_field", lambda state: {"keep": state["keep"]})],
+    )
+
+    save_ledger_report(report_path, ledger)
+
+    saved_rows = load_json(report_path)
+    assert saved_rows == ledger
+    assert saved_rows[0]["ledger"] == (
+        saved_rows[0]["complexity_after"] + saved_rows[0]["accumulated_defect"]
+    )

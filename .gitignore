@@ -1,4 +1,5 @@
 __pycache__/
+*.pyc
 *.py[cod]
 .pytest_cache/
 .mypy_cache/
@@ -8,3 +9,10 @@ venv/
 dist/
 build/
 *.egg-info/
+
+# Local planning artifacts not intended for the GitHub release.
+folderlist*.png
+gptinstruction
+main/
+misc/
+structure

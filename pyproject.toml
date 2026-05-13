@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "retrace-defect-ledger"
-version = "0.1.0"
 description = "A deterministic compression-complexity flight recorder for data transformations."
 readme = "README.md"
 requires-python = ">=3.10"
+dynamic = ["version"]
 authors = [
     { name = "Guntars Nosals" }
 ]
@@ -27,3 +27,9 @@ classifiers = [
 
 [tool.setuptools.packages.find]
 include = ["retrace*"]
+
+[tool.setuptools.dynamic]
+version = { attr = "retrace.__version__" }
+
+[project.scripts]
+retrace = "retrace.cli:main"

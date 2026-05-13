@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+import json
+from pathlib import Path
 from typing import Any
 
 
@@ -65,6 +67,22 @@ def print_ledger_table(
     """Print ReTrace ledger rows as a compact terminal table."""
 
     print(render_ledger_table(ledger, title=title))
+
+
+def save_ledger_report(path: str | Path, ledger_rows: list[dict[str, Any]]) -> None:
+    """Save raw structured ledger rows as a JSON report."""
+
+    report_path = Path(path)
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    with report_path.open("w", encoding="utf-8") as report_file:
+        json.dump(
+            ledger_rows,
+            report_file,
+            indent=2,
+            sort_keys=True,
+            ensure_ascii=False,
+        )
+        report_file.write("\n")
 
 
 def _format_row(

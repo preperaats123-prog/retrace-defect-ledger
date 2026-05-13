@@ -64,6 +64,86 @@ ledger = trace_pipeline(record, steps)
 print_ledger_table(ledger)
 ```
 
+## CLI Quickstart
+
+Run the built-in demo:
+
+```bash
+python -m retrace demo
+```
+
+Trace a JSON file with a root-level drop:
+
+```bash
+python -m retrace trace-json input.json --drop debug_blob
+```
+
+Trace and export a JSON report:
+
+```bash
+python -m retrace trace-json input.json --drop debug_blob --json-report report.json
+```
+
+Validate a saved report:
+
+```bash
+python -m retrace check report.json
+```
+
+Trace a JSON file with the default identity step:
+
+```bash
+python -m retrace trace-json input.json
+```
+
+Trace a JSON file with a small Python steps file:
+
+```bash
+python -m retrace trace-json input.json --steps steps.py
+```
+
+Drop root-level JSON object keys from the command line:
+
+```bash
+python -m retrace trace-json telemetry.json --drop headers --drop metadata
+```
+
+For v0.1, `--drop` only supports root-level JSON object keys. Drops run in the
+same order they appear on the command line. If a key is missing, or if the
+current state is not a JSON object, the drop step leaves the state unchanged.
+
+Export the raw structured ledger rows to JSON:
+
+```bash
+python -m retrace demo --json-report report.json
+python -m retrace trace-json input.json --drop debug_blob --json-report report.json
+```
+
+Reports contain the same ledger row dictionaries used by the terminal table.
+They do not contain the rendered table string, and they do not summarize,
+aggregate, rename, or drop rows.
+
+The checker treats a report as a closed ledger boundary. It exits successfully
+only when every row satisfies `ledger == complexity_after + accumulated_defect`
+and every row has the same conserved ledger value.
+
+The steps file must define `steps` as a list or tuple:
+
+```python
+steps = [
+    ("drop_debug_blob", lambda state: {
+        key: value for key, value in state.items() if key != "debug_blob"
+    }),
+]
+```
+
+After installation, the same CLI is exposed as:
+
+```bash
+retrace demo
+retrace trace-json input.json
+```
+
 Every core feature produces or consumes ledger rows with this shape:
 
 ```python
@@ -110,6 +190,7 @@ Bad claims:
 
 - proves anonymization
 - proves privacy
+- proves semantic information loss
 - proves true data loss
 - computes real Kolmogorov complexity
 
@@ -119,6 +200,9 @@ compressor.
 
 ## Limitations
 
+- ReTrace does not compute true Kolmogorov complexity.
+- ReTrace does not prove semantic information loss.
+- ReTrace does not prove privacy or anonymization.
 - zlib compressed size is only a practical complexity proxy.
 - Small payloads can be noisy because compression overhead dominates.
 - Canonical serialization matters; otherwise formatting drift can look like
