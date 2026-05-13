@@ -12,8 +12,8 @@ silently.
 
 ```text
 C(x) = len(zlib.compress(serialize(x)))
-D_n = max(0, C(x_n) - C(x_{n+1}))
-L_n = C(x_n) + accumulated_defect
+D_step = max(0, C(before) - C(after))
+ledger = C(after) + accumulated_defect
 ```
 
 ReTrace records apparent structural collapse. It does not prove semantic data
