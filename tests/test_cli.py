@@ -1,7 +1,10 @@
 import json
+from pathlib import Path
 import subprocess
 import sys
 
+
+CSV_FIXTURE_DIR = Path(__file__).parent / "fixtures" / "csv"
 
 REQUIRED_LEDGER_FIELDS = {
     "step",
@@ -28,7 +31,7 @@ def test_python_module_demo_returns_table():
 
 def test_trace_json_works_on_temporary_json_file(tmp_path):
     path = tmp_path / "input.json"
-    path.write_text(json.dumps({"name": "Guntars", "debug": "x" * 100}), encoding="utf-8")
+    path.write_text(json.dumps({"name": "Alex", "debug": "x" * 100}), encoding="utf-8")
 
     result = subprocess.run(
         [sys.executable, "-m", "retrace", "trace-json", str(path)],
@@ -224,6 +227,261 @@ def test_trace_json_report_creates_raw_ledger_file(tmp_path):
     assert rows[0]["step"] == "drop_debug_blob"
 
 
+def test_trace_csv_default_command(tmp_path):
+    path = tmp_path / "users.csv"
+    path.write_text("id,name,debug\n1,Ada,trace\n", encoding="utf-8")
+
+    result = subprocess.run(
+        [sys.executable, "-m", "retrace", "trace-csv", str(path)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert "identity" in result.stdout
+    assert "ReTrace Defect Ledger" in result.stdout
+
+
+def test_trace_csv_one_drop_column(tmp_path):
+    path = tmp_path / "users.csv"
+    path.write_text("id,name,debug\n1,Ada,trace\n", encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "retrace",
+            "trace-csv",
+            str(path),
+            "--drop-column",
+            "debug",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert "drop_column_debug" in result.stdout
+    assert "Ledger conserved: YES" in result.stdout
+
+
+def test_trace_csv_multiple_drop_columns_preserve_order(tmp_path):
+    path = tmp_path / "users.csv"
+    path.write_text("id,name,debug,notes\n1,Ada,trace,temporary\n", encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "retrace",
+            "trace-csv",
+            str(path),
+            "--drop-column",
+            "debug",
+            "--drop-column",
+            "notes",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert result.stdout.index("drop_column_debug") < result.stdout.index(
+        "drop_column_notes"
+    )
+
+
+def test_trace_csv_missing_column_is_noop(tmp_path):
+    path = tmp_path / "users.csv"
+    path.write_text("id,name\n1,Ada\n", encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "retrace",
+            "trace-csv",
+            str(path),
+            "--drop-column",
+            "debug",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert "drop_column_debug" in result.stdout
+    assert "D=0" in result.stdout
+
+
+def test_trace_csv_json_report_and_check(tmp_path):
+    csv_path = tmp_path / "users.csv"
+    report_path = tmp_path / "reports" / "csv-report.json"
+    csv_path.write_text("id,name,debug\n1,Ada,trace\n", encoding="utf-8")
+
+    trace_result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "retrace",
+            "trace-csv",
+            str(csv_path),
+            "--drop-column",
+            "debug",
+            "--json-report",
+            str(report_path),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    check_result = subprocess.run(
+        [sys.executable, "-m", "retrace", "check", str(report_path)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert trace_result.returncode == 0
+    assert check_result.returncode == 0
+    rows = _assert_valid_ledger_report(report_path)
+    assert rows[0]["step"] == "drop_column_debug"
+
+
+def test_trace_csv_works_on_simple_fixture():
+    result = subprocess.run(
+        [sys.executable, "-m", "retrace", "trace-csv", str(CSV_FIXTURE_DIR / "simple.csv")],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert "identity" in result.stdout
+    assert "ReTrace Defect Ledger" in result.stdout
+
+
+def test_trace_csv_drop_column_works_on_simple_fixture():
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "retrace",
+            "trace-csv",
+            str(CSV_FIXTURE_DIR / "simple.csv"),
+            "--drop-column",
+            "debug",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert "drop_column_debug" in result.stdout
+
+
+def test_trace_csv_fixture_drop_order():
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "retrace",
+            "trace-csv",
+            str(CSV_FIXTURE_DIR / "simple.csv"),
+            "--drop-column",
+            "notes",
+            "--drop-column",
+            "debug",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert result.stdout.index("drop_column_notes") < result.stdout.index(
+        "drop_column_debug"
+    )
+
+
+def test_trace_csv_works_on_quoted_fixture():
+    result = subprocess.run(
+        [sys.executable, "-m", "retrace", "trace-csv", str(CSV_FIXTURE_DIR / "quoted.csv")],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert "ReTrace Defect Ledger" in result.stdout
+
+
+def test_trace_csv_works_on_numeric_strings_fixture():
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "retrace",
+            "trace-csv",
+            str(CSV_FIXTURE_DIR / "numeric_strings.csv"),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert "ReTrace Defect Ledger" in result.stdout
+
+
+def test_trace_csv_fixture_json_report_and_check(tmp_path):
+    report_path = tmp_path / "reports" / "fixture-report.json"
+    trace_result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "retrace",
+            "trace-csv",
+            str(CSV_FIXTURE_DIR / "simple.csv"),
+            "--drop-column",
+            "debug",
+            "--json-report",
+            str(report_path),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    check_result = subprocess.run(
+        [sys.executable, "-m", "retrace", "check", str(report_path)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert trace_result.returncode == 0
+    assert check_result.returncode == 0
+    assert "Ledger conserved: YES" in check_result.stdout
+    _assert_valid_ledger_report(report_path)
+
+
+def test_trace_csv_missing_file_fails_cleanly(tmp_path):
+    result = subprocess.run(
+        [sys.executable, "-m", "retrace", "trace-csv", str(tmp_path / "missing.csv")],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 1
+    assert "file not found" in result.stderr
+
+
 def test_version_flag_returns_version():
     result = subprocess.run(
         [sys.executable, "-m", "retrace", "--version"],
@@ -233,7 +491,7 @@ def test_version_flag_returns_version():
     )
 
     assert result.returncode == 0
-    assert "retrace 0.1.0" in result.stdout
+    assert "retrace 0.1.1" in result.stdout
 
 
 def test_check_valid_exported_report_passes(tmp_path):

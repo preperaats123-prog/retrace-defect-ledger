@@ -9,7 +9,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 dynamic = ["version"]
 authors = [
-    { name = "Guntars Nosals" }
+    { name = "ReTrace contributors" }
 ]
 keywords = [
     "data-pipeline",

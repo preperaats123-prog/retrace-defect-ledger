@@ -5,7 +5,7 @@ practical structural-complexity estimate:
 
     C(x) = len(zlib.compress(serialize(x)))
     D_n = max(0, C(x_n) - C(x_{n+1}))
-    L_n = C(x_n) + accumulated_defect
+    L_n = C(x_{n+1}) + accumulated_defect
 
 It records apparent representation shrinkage. It does not prove semantic data
 loss, privacy, anonymization, or true information-theoretic loss.

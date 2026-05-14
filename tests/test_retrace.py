@@ -78,8 +78,8 @@ def test_compare_zlib_complexity_smoke():
             "age": int(record["age"]),
         }
 
-    before = {"name": " GUNTARS ", "age": "24", "debug": "x" * 100}
-    after = {"name": "Guntars", "age": "24", "debug": "x" * 50}
+    before = {"name": " ALEX ", "age": "24", "debug": "x" * 100}
+    after = {"name": "Alex", "age": "24", "debug": "x" * 50}
 
     report = compare_zlib_complexity(normalize, before, after)
 
@@ -109,12 +109,12 @@ def test_render_ledger_table_shows_conservation_summary():
 
 def test_json_adapter_loads_and_saves_canonical_json(tmp_path):
     path = tmp_path / "record.json"
-    value = {"z": 1, "a": ["Guntars", "ā"]}
+    value = {"z": 1, "a": ["Alex", "ā"]}
 
     save_json(path, value)
 
     assert load_json(path) == value
-    assert path.read_bytes() == b'{"a":["Guntars","\xc4\x81"],"z":1}'
+    assert path.read_bytes() == b'{"a":["Alex","\xc4\x81"],"z":1}'
 
 
 def test_canonical_json_bytes_are_stable():

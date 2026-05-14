@@ -8,8 +8,8 @@ from retrace import print_ledger_table, trace_pipeline
 
 record = {
     "id": 1,
-    "name": "  GUNTARS NOSALS  ",
-    "email": "guntars@example.com",
+    "name": "  ALEX SAMPLE  ",
+    "email": "alex@example.com",
     "debug_blob": "x" * 2000,
     "temporary_notes": "y" * 1000,
 }

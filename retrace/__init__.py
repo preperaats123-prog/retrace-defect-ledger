@@ -1,6 +1,6 @@
 """ReTrace Defect Ledger public API."""
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 from retrace.checks import REQUIRED_LEDGER_FIELDS, check_ledger_report
 from retrace.core import (

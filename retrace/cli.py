@@ -16,6 +16,7 @@ from retrace import (
     save_ledger_report,
     trace_pipeline,
 )
+from retrace.adapters.csv_adapter import load_csv
 from retrace.adapters.json_adapter import load_json
 
 
@@ -29,6 +30,8 @@ def main(argv: list[str] | None = None) -> int:
         return _run_demo(args.json_report)
     if args.command == "trace-json":
         return _run_trace_json(args.path, args.steps, args.drop, args.json_report)
+    if args.command == "trace-csv":
+        return _run_trace_csv(args.path, args.drop_column, args.json_report)
     if args.command == "check":
         return _run_check(args.path)
 
@@ -39,7 +42,7 @@ def main(argv: list[str] | None = None) -> int:
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="retrace",
-        description="Deterministic compression-complexity flight recorder.",
+        description="Small deterministic tracing tool for data transformations.",
     )
     parser.add_argument(
         "--version",
@@ -51,17 +54,22 @@ def _build_parser() -> argparse.ArgumentParser:
 
     demo = subparsers.add_parser(
         "demo",
-        help="run the built-in demo pipeline",
+        help="run the built-in representation-shrinkage demo",
+        description="Run the built-in demo and print ReTrace ledger rows.",
     )
     demo.add_argument(
         "--json-report",
         type=Path,
-        help="write raw ledger rows to a JSON report file",
+        help="write raw ledger rows to a JSON report",
     )
 
     trace_json = subparsers.add_parser(
         "trace-json",
-        help="trace a JSON file with an identity pipeline or a steps file",
+        help="trace a JSON file with the identity step, drops, or a steps file",
+        description=(
+            "Trace a JSON file. With no drops or steps file, ReTrace records "
+            "the identity step."
+        ),
     )
     trace_json.add_argument("path", type=Path, help="path to a JSON file")
     trace_json.add_argument(
@@ -79,14 +87,40 @@ def _build_parser() -> argparse.ArgumentParser:
     trace_json.add_argument(
         "--json-report",
         type=Path,
-        help="write raw ledger rows to a JSON report file",
+        help="write raw ledger rows to a JSON report",
+    )
+
+    trace_csv = subparsers.add_parser(
+        "trace-csv",
+        help="trace a CSV file with the identity step or column drops",
+        description=(
+            "Trace CSV rows loaded as string dictionaries. With no column "
+            "drops, ReTrace records the identity step."
+        ),
+    )
+    trace_csv.add_argument("path", type=Path, help="path to a CSV file")
+    trace_csv.add_argument(
+        "--drop-column",
+        action="append",
+        default=[],
+        metavar="NAME",
+        help="drop a CSV column; repeat to drop columns in order",
+    )
+    trace_csv.add_argument(
+        "--json-report",
+        type=Path,
+        help="write raw ledger rows to a JSON report",
     )
 
     check = subparsers.add_parser(
         "check",
-        help="validate a saved ReTrace JSON report",
+        help="validate ledger identity and conserved value in a JSON report",
+        description=(
+            "Validate a non-empty JSON report by checking required ledger "
+            "fields, ledger identity, and a conserved ledger value."
+        ),
     )
-    check.add_argument("path", type=Path, help="path to a JSON report file")
+    check.add_argument("path", type=Path, help="path to a ReTrace JSON report")
 
     return parser
 
@@ -94,8 +128,8 @@ def _build_parser() -> argparse.ArgumentParser:
 def _run_demo(report_path: Path | None) -> int:
     record = {
         "id": 1,
-        "name": "  GUNTARS NOSALS  ",
-        "email": "guntars@example.com",
+        "name": "  ALEX SAMPLE  ",
+        "email": "alex@example.com",
         "debug_blob": "x" * 2000,
         "temporary_notes": "y" * 1000,
     }
@@ -144,6 +178,24 @@ def _run_trace_json(
     return _emit_ledger(trace_pipeline(data, steps), report_path)
 
 
+def _run_trace_csv(
+    path: Path,
+    drop_columns: list[str],
+    report_path: Path | None,
+) -> int:
+    try:
+        rows = load_csv(path)
+        steps = _build_trace_csv_steps(drop_columns)
+    except FileNotFoundError as error:
+        print(f"retrace: file not found: {error.filename}", file=sys.stderr)
+        return 1
+    except (OSError, ValueError, TypeError) as error:
+        print(f"retrace: {error}", file=sys.stderr)
+        return 1
+
+    return _emit_ledger(trace_pipeline(rows, steps), report_path)
+
+
 def _emit_ledger(ledger: list[dict[str, Any]], report_path: Path | None) -> int:
     try:
         print_ledger_table(ledger)
@@ -166,6 +218,15 @@ def _build_trace_json_steps(steps_path: Path | None, drop_keys: list[str]) -> li
     return steps
 
 
+def _build_trace_csv_steps(drop_columns: list[str]) -> list[Any]:
+    steps = [_drop_column_step(column) for column in drop_columns]
+
+    if not steps:
+        steps.append(("identity", lambda rows: rows))
+
+    return steps
+
+
 def _drop_step(key: str) -> tuple[str, Any]:
     def drop_key(state: Any) -> Any:
         if not isinstance(state, dict) or key not in state:
@@ -178,6 +239,30 @@ def _drop_step(key: str) -> tuple[str, Any]:
         }
 
     return f"drop_{key}", drop_key
+
+
+def _drop_column_step(column: str) -> tuple[str, Any]:
+    def drop_column(rows: Any) -> Any:
+        if not isinstance(rows, list):
+            return rows
+
+        next_rows = []
+        for row in rows:
+            if not isinstance(row, dict) or column not in row:
+                next_rows.append(row.copy() if isinstance(row, dict) else row)
+                continue
+
+            next_rows.append(
+                {
+                    current_column: value
+                    for current_column, value in row.items()
+                    if current_column != column
+                }
+            )
+
+        return next_rows
+
+    return f"drop_column_{column}", drop_column
 
 
 def _load_steps(path: Path) -> Any:

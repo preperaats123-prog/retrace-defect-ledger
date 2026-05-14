@@ -11,8 +11,12 @@ build/
 *.egg-info/
 
 # Local planning artifacts not intended for the GitHub release.
+chat*
+data
 folderlist*.png
 gptinstruction
+instructions*
+latest*
 main/
 misc/
 structure
